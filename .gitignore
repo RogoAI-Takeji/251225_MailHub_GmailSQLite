@@ -1,0 +1,42 @@
+# ==========================================
+# RogoAI Mail Hub - .gitignore
+# ==========================================
+
+# 設定ファイル（個人情報を含むため）
+config/
+
+# データベース（メール本文を含むため）
+storage/
+
+# PyInstallerビルド成果物
+build/
+dist/
+# Note: *.spec is included for reproducible builds
+
+# Pythonキャッシュ
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# libフォルダ内のキャッシュのみ除外（ソースは含める）
+lib/**/__pycache__/
+lib/**/*.pyc
+
+# OS固有ファイル
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 一時ファイル
+*.tmp
+*.temp
+*.log
+
+# IDEファイル（個人設定のみ除外、プロジェクト設定は含める）
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo

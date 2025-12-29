@@ -1,0 +1,24 @@
+{
+    "email": "your-email@gmail.com",
+    "password": "your-app-password-here",
+    "imap_server": "imap.gmail.com",
+    "imap_folder": "INBOX",
+    "pop_server": "pop.gmail.com",
+    "pop_port": 995,
+    "smtp_server": "smtp.gmail.com",
+    "smtp_port": 587,
+    "providers": [
+        {
+            "email": "your-provider-email@example.com",
+            "smtp_host": "smtp.gmail.com",
+            "smtp_port": "587",
+            "password": "your-app-password-here",
+            "fallback_gmail": false
+        }
+    ],
+    "provider_colors": {
+        "gmail.com": "#e9e5df",
+        "example.com": "#d7c9cc"
+    },
+    "skip_html_warning": false
+}
