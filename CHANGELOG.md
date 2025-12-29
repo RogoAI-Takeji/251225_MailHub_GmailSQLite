@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [13.0] - 2025-01-04
+## [1.0.0] - 2025-01-04
 
 ### Added
 - **Gmail Washing Machine Strategy**: Forward ISP emails to Gmail, filter through spam detection, and manage locally
@@ -61,4 +61,4 @@ For questions or bug reports:
 
 ---
 
-**Version Naming**: v13.0 corresponds to the video release date (2025/01/04) and represents the initial public release.
+**Version Naming**: v1.0.0 corresponds to the video release date (2025/01/04) and represents the initial public release.

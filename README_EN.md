@@ -1,15 +1,15 @@
-# RogoAI Mail Hub v13
+# RogoAI Mail Hub v1
 
 **Gmail Washing Machine Strategy: Secure Unified Management of Multiple Provider Emails**
 
-[![YouTube Channel](https://img.shields.io/badge/YouTube-老後AI-red?logo=youtube)](https://www.youtube.com/@rogoai)
+[![YouTube Channel](https://img.shields.io/badge/YouTube-老後AI-red?logo=youtube)](https://www.youtube.com/@seniorAI-japan)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
 ## 📖 Overview
 
-RogoAI Mail Hub v13 is an email client that forwards emails from multiple ISP accounts (OCN, Nifty, So-net, Biglobe, etc.) to Gmail and manages them securely on your local machine.
+RogoAI Mail Hub v1.0 is an email client that forwards emails from multiple ISP accounts (OCN, Nifty, So-net, Biglobe, etc.) to Gmail and manages them securely on your local machine.
 
 ### What is the Gmail Washing Machine Strategy?
 
@@ -58,11 +58,11 @@ Reply from Original Address
 #### Executable Version (EXE)
 
 1. Download the latest release from [Releases](https://github.com/RogoAI-Takejij/251225_MailHub_GmailSQLite/releases)
-   - `MailHub_v13.zip` (Japanese version)
+   - `MailHub_v1.zip` (Japanese version)
 
 **Note:** Version v13 is currently Japanese only. English version will be available in future releases.
 
-2. Extract the ZIP and run `MailHub_v13.exe`
+2. Extract the ZIP and run `MailHub_v1.exe`
 
 3. Enter settings on first launch
    - Gmail address
@@ -336,10 +336,10 @@ Third-party library licenses are in [LICENSE_THIRD_PARTY.md](LICENSE_THIRD_PARTY
 
 ## 👤 Author
 
-**RogoAI (老後AI)**
+**Created by Takejii (RogoAI)**
 
-- YouTube: [@rogoai](https://www.youtube.com/@rogoai)
-- GitHub: [RogoAI](https://github.com/RogoAI-Takejij)
+- YouTube: [@seniorAI-japan](https://www.youtube.com/@seniorAI-japan)
+- GitHub: [RogoAI-Takeji](https://github.com/RogoAI-Takeji)
 
 ---
 
@@ -347,7 +347,7 @@ Third-party library licenses are in [LICENSE_THIRD_PARTY.md](LICENSE_THIRD_PARTY
 
 For questions or issues:
 1. [GitHub Issues](https://github.com/RogoAI-Takejij/251225_MailHub_GmailSQLite/issues)
-2. [YouTube Video Comments](https://www.youtube.com/@rogoai)
+2. [YouTube Video Comments](https://www.youtube.com/@seniorAI-japan)
 
 ---
 

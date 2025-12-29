@@ -1,15 +1,15 @@
-# RogoAI Mail Hub v13
+# RogoAI Mail Hub v1
 
 **Gmail洗浄機戦略：複数プロバイダメールを安全に一元管理**
 
-[![YouTube Channel](https://img.shields.io/badge/YouTube-老後AI-red?logo=youtube)](https://www.youtube.com/@rogoai)
+[![YouTube Channel](https://img.shields.io/badge/YouTube-老後AI-red?logo=youtube)](https://www.youtube.com/@seniorAI-japan)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
 ## 📖 概要
 
-RogoAI Mail Hub v13は、複数のプロバイダメール（OCN、Nifty、So-net、Biglobe等）をGmailに転送し、ローカルで安全に管理するためのメールクライアントです。
+RogoAI Mail Hub v1.0は、複数のプロバイダメール（OCN、Nifty、So-net、Biglobe等）をGmailに転送し、ローカルで安全に管理するためのメールクライアントです。
 
 ### Gmail洗浄機戦略とは？
 
@@ -58,11 +58,11 @@ Mail Hub (ローカル保管 = 安全)
 #### 実行ファイル版（EXE）
 
 1. [Releases](https://github.com/RogoAI-Takejij/251225_MailHub_GmailSQLite/releases)から最新版をダウンロード
-   - `MailHub_v13.zip` (日本語版)
+   - `MailHub_v1.zip` (日本語版)
 
 **注意：** 現在のバージョン（v13）は日本語版のみです。英語版は将来のバージョンで対応予定です。
 
-2. ZIPを解凍して`MailHub_v13.exe`を実行
+2. ZIPを解凍して`MailHub_v1.exe`を実行
 
 3. 初回起動時に設定を入力
    - Gmailアドレス
@@ -336,10 +336,10 @@ MIT License - 詳細は[LICENSE](LICENSE)をご覧ください。
 
 ## 👤 作者
 
-**RogoAI（老後AI）**
+**Created by Takejii (RogoAI)**
 
-- YouTube: [@rogoai](https://www.youtube.com/@rogoai)
-- GitHub: [RogoAI](https://github.com/RogoAI-Takejij)
+- YouTube: [@seniorAI-japan](https://www.youtube.com/@seniorAI-japan)
+- GitHub: [RogoAI-Takeji](https://github.com/RogoAI-Takeji)
 
 ---
 
@@ -347,7 +347,7 @@ MIT License - 詳細は[LICENSE](LICENSE)をご覧ください。
 
 質問や問題がある場合：
 1. [GitHub Issues](https://github.com/RogoAI-Takejij/251225_MailHub_GmailSQLite/issues)
-2. [YouTube動画のコメント欄](https://www.youtube.com/@rogoai)
+2. [YouTube動画のコメント欄](https://www.youtube.com/@seniorAI-japan)
 
 ---
 

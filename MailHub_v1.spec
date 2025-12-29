@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='MailHub_v13',
+    name='MailHub_v1',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

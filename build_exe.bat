@@ -40,7 +40,7 @@ echo ==========================================
 echo.
 
 REM Build Japanese version
-pyinstaller --onefile --windowed --name MailHub_v13 --icon=icon.ico --add-data "lib;lib" --hidden-import tkinterweb main.py
+pyinstaller --onefile --windowed --name MailHub_v1 --icon=icon.ico --add-data "lib;lib" --hidden-import tkinterweb main.py
 
 if errorlevel 1 (
     echo [ERROR] Build failed.
@@ -60,10 +60,10 @@ echo.
 
 cd dist
 
-if exist MailHub_v13.zip del MailHub_v13.zip
+if exist MailHub_v1.zip del MailHub_v1.zip
 
 REM Use PowerShell to create ZIP file
-powershell -command "Compress-Archive -Path 'MailHub_v13.exe' -DestinationPath 'MailHub_v13.zip'"
+powershell -command "Compress-Archive -Path 'MailHub_v1.exe' -DestinationPath 'MailHub_v1.zip'"
 
 cd ..
 
@@ -73,8 +73,8 @@ echo Build Complete!
 echo ==========================================
 echo.
 echo Output files:
-echo   - dist\MailHub_v13.exe
-echo   - dist\MailHub_v13.zip
+echo   - dist\MailHub_v1.exe
+echo   - dist\MailHub_v1.zip
 echo.
 echo These files are ready to be uploaded to GitHub Releases.
 echo.
