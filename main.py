@@ -3449,19 +3449,45 @@ class MailHubApp:
         self.refresh_tree_from_db()
         self.refresh_folder_tree()
     
-    def build_move_menu_single(self, menu, message_id):
+    def build_move_menu_single(self, menu, item_iid):
         """1件選択時のフォルダ移動メニュー構築"""
-        # メールのプロバイダを取得
-        conn = sqlite3.connect(DB_FILE)
-        cur = conn.cursor()
-        cur.execute("SELECT provider FROM emails WHERE message_id=?", (message_id,))
-        row = cur.fetchone()
-        conn.close()
-        
-        if not row:
+        # TreeviewのIIDから実際のMessage-IDを取得（単一）
+        msg_id = self.iid_to_msgid.get(item_iid, item_iid)  # マッピングから取得、なければIIDをそのまま使用
+        if not msg_id:
+            # フォールバック: 基本メニューのみ表示
+            menu.add_command(label="📂 プロモ・ボックス", command=self.move_to_promo)
             return
         
-        provider = row[0]
+        # メールのプロバイダ、送信者、プロモフラグを取得
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            cur = conn.cursor()
+            cur.execute("SELECT provider, sender, is_promo FROM emails WHERE message_id=?", (msg_id,))
+            row = cur.fetchone()
+            conn.close()
+            
+            if not row:
+                # フォールバック: 基本メニューのみ表示
+                menu.add_command(label="📂 プロモ・ボックス", command=self.move_to_promo)
+                return
+            
+            provider, sender, is_promo = row
+            
+            # プロモ・ボックス内のメールの場合、実際のプロバイダを送信者から取得
+            if is_promo == 1 or provider == "__promo__":
+                # 送信者のドメインから実際のプロバイダを特定
+                clean_sender = self.fetcher.clean_address(sender)
+                if "@" in clean_sender:
+                    actual_provider = clean_sender.split("@")[-1]
+                else:
+                    actual_provider = provider
+            else:
+                actual_provider = provider
+        except Exception as e:
+            print(f"[ERROR] build_move_menu_single: {e}")
+            # エラー時はフォールバック: 基本メニューのみ表示
+            menu.add_command(label="📂 プロモ・ボックス", command=self.move_to_promo)
+            return
         
         # プロモ・ボックス内にいる場合、「通常メールへ」を先頭に追加
         if self.current_promo_filter:
@@ -3485,41 +3511,65 @@ class MailHubApp:
         
         menu.add_separator()
         
-        # 該当プロバイダ
-        if provider:
-            menu.add_command(label=f"📧 {provider}", command=lambda: self.move_to_folder_direct(provider, None))
+        # 該当プロバイダ（実際のプロバイダを使用）
+        if actual_provider and actual_provider != "__promo__":
+            menu.add_command(label=f"📧 {actual_provider}", command=lambda p=actual_provider: self.move_to_folder_direct(p, None))
             
             # プロバイダのゴミ箱
-            menu.add_command(label="  🗑️ ゴミ箱", command=lambda: self.move_to_folder_direct(provider, "__trash__"))
+            menu.add_command(label="  🗑️ ゴミ箱", command=lambda p=actual_provider: self.move_to_folder_direct(p, "__trash__"))
             
             # プロバイダのカスタムフォルダ
-            provider_folders = self.db_mgr.get_folders(provider)
+            provider_folders = self.db_mgr.get_folders(actual_provider)
             for folder_name, folder_type in provider_folders:
                 if folder_type == 'custom':
-                    menu.add_command(label=f"  📂 {folder_name}", command=lambda fn=folder_name: self.move_to_folder_direct(provider, fn))
+                    menu.add_command(label=f"  📂 {folder_name}", command=lambda fn=folder_name, p=actual_provider: self.move_to_folder_direct(p, fn))
             
             # プロバイダに新規フォルダ作成
-            menu.add_command(label="  ➕ 新規フォルダ作成", command=lambda: self.create_custom_folder(provider))
+            menu.add_command(label="  ➕ 新規フォルダ作成", command=lambda p=actual_provider: self.create_custom_folder(p))
     
     def build_move_menu_multiple(self, menu):
         """複数選択時のフォルダ移動メニュー構築"""
-        # 選択されたメールのプロバイダを全取得
-        selected = self.tree.selection()
-        providers = set()
-        
-        # 安全なIIDから元のMessage-IDリストを取得
-        msg_ids = self.get_msgids_from_selection(selected)
-        
-        conn = sqlite3.connect(DB_FILE)
-        cur = conn.cursor()
-        
-        for msg_id in msg_ids:
-            cur.execute("SELECT provider FROM emails WHERE message_id=?", (msg_id,))
-            row = cur.fetchone()
-            if row:
-                providers.add(row[0])
-        
-        conn.close()
+        try:
+            # 選択されたメールのプロバイダを全取得
+            selected = self.tree.selection()
+            providers = set()
+            actual_providers = set()
+            
+            # 安全なIIDから元のMessage-IDリストを取得
+            msg_ids = self.get_msgids_from_selection(selected)
+            
+            if not msg_ids:
+                # フォールバック: 基本メニューのみ表示
+                menu.add_command(label="📂 プロモ・ボックス", command=self.move_to_promo)
+                return
+            
+            conn = sqlite3.connect(DB_FILE)
+            cur = conn.cursor()
+            
+            for msg_id in msg_ids:
+                cur.execute("SELECT provider, sender, is_promo FROM emails WHERE message_id=?", (msg_id,))
+                row = cur.fetchone()
+                if row:
+                    provider, sender, is_promo = row
+                    providers.add(provider)
+                    
+                    # プロモ・ボックス内のメールの場合、実際のプロバイダを送信者から取得
+                    if is_promo == 1 or provider == "__promo__":
+                        clean_sender = self.fetcher.clean_address(sender)
+                        if "@" in clean_sender:
+                            actual_provider = clean_sender.split("@")[-1]
+                            actual_providers.add(actual_provider)
+                        else:
+                            actual_providers.add(provider)
+                    else:
+                        actual_providers.add(provider)
+            
+            conn.close()
+        except Exception as e:
+            print(f"[ERROR] build_move_menu_multiple: {e}")
+            # エラー時はフォールバック: 基本メニューのみ表示
+            menu.add_command(label="📂 プロモ・ボックス", command=self.move_to_promo)
+            return
         
         # プロモ・ボックス内にいる場合、「通常メールへ」を先頭に追加
         if self.current_promo_filter:
@@ -3541,17 +3591,19 @@ class MailHubApp:
         # プロモに新規フォルダ作成
         menu.add_command(label="  ➕ 新規フォルダ作成", command=lambda: self.create_custom_folder("__promo__"))
         
-        # 単一プロバイダの場合のみ、該当プロバイダも表示
-        if len(providers) == 1:
-            provider = list(providers)[0]
+        # 単一プロバイダの場合のみ、該当プロバイダも表示（実際のプロバイダを使用）
+        actual_providers_filtered = {p for p in actual_providers if p and p != "__promo__"}
+        
+        if len(actual_providers_filtered) == 1:
+            provider = list(actual_providers_filtered)[0]
             
             menu.add_separator()
             
             # 該当プロバイダ
-            menu.add_command(label=f"📧 {provider}", command=lambda: self.move_to_folder_direct(provider, None))
+            menu.add_command(label=f"📧 {provider}", command=lambda p=provider: self.move_to_folder_direct(p, None))
             
             # プロバイダのゴミ箱
-            menu.add_command(label="  🗑️ ゴミ箱", command=lambda: self.move_to_folder_direct(provider, "__trash__"))
+            menu.add_command(label="  🗑️ ゴミ箱", command=lambda p=provider: self.move_to_folder_direct(p, "__trash__"))
             
             # プロバイダのカスタムフォルダ
             provider_folders = self.db_mgr.get_folders(provider)
@@ -4008,22 +4060,36 @@ class MailHubApp:
         if not msg_id:
             return
         
-        # プロバイダ取得
+        # プロバイダとメール情報取得
         conn = sqlite3.connect(DB_FILE)
         cur = conn.cursor()
-        cur.execute("SELECT provider FROM emails WHERE message_id=?", (msg_id,))
+        cur.execute("SELECT provider, sender, is_promo FROM emails WHERE message_id=?", (msg_id,))
         row = cur.fetchone()
-        conn.close()
         
         if not row:
+            conn.close()
             return
         
-        provider = row[0]
+        provider, sender, is_promo = row
         
+        # プロモ・ボックス内のメールの場合、実際のプロバイダを送信者から取得
+        if is_promo == 1 or provider == "__promo__":
+            # 送信者のドメインから実際のプロバイダを特定
+            clean_sender = self.fetcher.clean_address(sender)
+            if "@" in clean_sender:
+                actual_provider = clean_sender.split("@")[-1]
+            else:
+                actual_provider = provider
+        else:
+            actual_provider = provider
+        
+        conn.close()
         # フォルダ選択ダイアログ
         dialog = tk.Toplevel(self.root)
         dialog.title("フォルダへ移動")
         dialog.geometry("300x400")
+        dialog.transient(self.root)
+        dialog.grab_set()
         
         tk.Label(dialog, text="移動先フォルダを選択:", font=("Arial", 10, "bold")).pack(pady=10)
         
@@ -4041,8 +4107,8 @@ class MailHubApp:
             "🗑️ ゴミ箱": "__trash__",
         }
         
-        # カスタムフォルダ
-        folders = self.db_mgr.get_folders(provider)
+        # カスタムフォルダ（実際のプロバイダから取得）
+        folders = self.db_mgr.get_folders(actual_provider)
         for folder_name, folder_type in folders:
             if folder_type == 'custom':
                 listbox.insert(tk.END, f"📂 {folder_name}")
@@ -4060,9 +4126,16 @@ class MailHubApp:
             messagebox.showinfo("完了", f"「{folder_label}」へ移動しました")
             dialog.destroy()
             self.refresh_tree_from_db()
+            self.refresh_folder_tree()
         
         tk.Button(dialog, text="移動", command=do_move, bg="#2196F3", fg="white", width=15).pack(pady=10)
         tk.Button(dialog, text="キャンセル", command=dialog.destroy, width=15).pack(pady=5)
+        
+        # ダイアログを中央に配置
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
+        y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
+        dialog.geometry(f"+{x}+{y}")
     
     def show_inbox(self):
         """受信箱表示"""

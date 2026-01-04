@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0] - 2025-01-04
+## [1.0.1] - 2026-01-04
+
+### Fixed
+- **Context Menu Bug**: Fixed issue where right-click "Move to Folder" submenu would not display custom folders for emails in Promo Box
+- **TypeError Fix**: Resolved `TypeError: unhashable type: 'list'` that prevented right-click context menu from appearing
+- **Provider Detection**: Improved actual provider detection for promotional emails by extracting domain from sender's email address
+- **Folder Menu Display**: Custom folders now correctly appear in both single-selection and multi-selection context menus
+
+### Changed
+- Enhanced `build_move_menu_single()` and `build_move_menu_multiple()` methods to properly handle Promo Box emails
+- Added error handling and fallback mechanisms to ensure context menu always displays even when errors occur
+
+---
+
+## [1.0.0] - 2025-12-28
 
 ### Added
 - **Gmail Washing Machine Strategy**: Forward ISP emails to Gmail, filter through spam detection, and manage locally
@@ -61,4 +75,4 @@ For questions or bug reports:
 
 ---
 
-**Version Naming**: v1.0.0 corresponds to the video release date (2025/01/04) and represents the initial public release.
+**Version Naming**: Version numbers follow semantic versioning (MAJOR.MINOR.PATCH) for better tracking of changes and compatibility.
