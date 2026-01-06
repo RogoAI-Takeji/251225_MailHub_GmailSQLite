@@ -40,7 +40,12 @@ echo ==========================================
 echo.
 
 REM Build Japanese version
-pyinstaller --onefile --windowed --name MailHub_v1 --icon=icon.ico --add-data "lib;lib" --hidden-import tkinterweb main.py
+pyinstaller --onefile --windowed ^
+    --name MailHub_v1 ^
+    --icon=icon.ico ^
+    --add-data "lib;lib" ^
+    --hidden-import tkinterweb ^
+    main.py
 
 if errorlevel 1 (
     echo [ERROR] Build failed.

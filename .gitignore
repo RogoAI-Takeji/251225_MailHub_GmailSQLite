@@ -40,3 +40,17 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# バックアップファイル
+*_old.py
+*_old.bat
+*_v1.py
+*_v2.py
+*_v3.py
+*_backup*.py
+*_fixed*.py
+*_correct.py
+*_updated.md
+
+# 作業ファイル
+tree.txt

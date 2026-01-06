@@ -27,8 +27,14 @@ import sys
 # ==========================================
 # 内包ライブラリのパス追加
 # ==========================================
-# プロジェクト内のlibフォルダを優先的に読み込む
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# 【修正】exe化対応: sys.frozenを判定
+if getattr(sys, 'frozen', False):
+    # PyInstallerでexe化されている場合
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    # 通常のPython実行の場合
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 LIB_DIR = os.path.join(BASE_DIR, "lib")
 if os.path.exists(LIB_DIR):
     sys.path.insert(0, LIB_DIR)
@@ -36,8 +42,7 @@ if os.path.exists(LIB_DIR):
 # ==========================================
 # 定数・設定 (ディレクトリ構成対応版)
 # ==========================================
-# 実行ファイルの場所を基準にする
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# BASE_DIRは上記で既に定義済み（exe対応）
 
 # 環境変数でカスタマイズ可能（上級者向け）
 # 通常ユーザーは何も設定せず、デフォルト（main.pyと同じフォルダ）を使用
@@ -902,11 +907,21 @@ class MailFetcher:
                 part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(fpath)}")
                 msg.attach(part)
 
-        server = smtplib.SMTP(smtp_host, smtp_port)
-        server.starttls()
-        server.login(smtp_user, smtp_pass)
-        server.send_message(msg)
-        server.quit()
+        # 【修正】ポート番号によって接続方式を使い分け
+        if smtp_port == 465:
+            # ポート465: SMTP_SSL
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port)
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+            server.quit()
+        else:
+            # ポート587等: SMTP + STARTTLS
+            server = smtplib.SMTP(smtp_host, smtp_port)
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+            server.quit()
+        
         return (True, "送信成功")
     
     def extract_attachments(self, msg):
@@ -1036,12 +1051,14 @@ class MailViewer:
         self.content_frame = tk.Frame(self.viewer)
         self.content_frame.pack(fill=tk.BOTH, expand=True)
         
-        # デフォルトはテキスト版（安全）
+        # 【修正】デフォルトはテキスト版で開く
         try:
-            self.switch_mode("html_safe")
-        except Exception as e:
-            print(f"[WARNING] HTML表示に失敗、テキストモードで開きます: {e}")
             self.switch_mode("text")
+        except Exception as e:
+            print(f"[ERROR] テキストモード表示に失敗: {e}")
+            # フォールバック（エラーメッセージ表示）
+            tk.Label(self.content_frame, text=f"メール表示エラー: {e}", 
+                    fg="red", font=("Arial", 12)).pack(pady=50)
     
     def switch_mode(self, mode):
         # 既存コンテンツクリア
@@ -3134,9 +3151,20 @@ class MailHubApp:
                 msg["From"] = from_email
                 msg["To"] = to_val
                 
-                with smtplib.SMTP_SSL(smtp_account['smtp_server'], smtp_account.get('smtp_port', 465)) as server:
-                    server.login(smtp_account['email'], smtp_account['password'])
-                    server.send_message(msg)
+                # 【修正】ポート番号によって接続方式を使い分け
+                smtp_port = smtp_account.get('smtp_port', 465)
+                
+                if smtp_port == 465:
+                    # ポート465: SMTP_SSL
+                    with smtplib.SMTP_SSL(smtp_account['smtp_server'], smtp_port) as server:
+                        server.login(smtp_account['email'], smtp_account['password'])
+                        server.send_message(msg)
+                else:
+                    # ポート587等: SMTP + STARTTLS
+                    with smtplib.SMTP(smtp_account['smtp_server'], smtp_port) as server:
+                        server.starttls()
+                        server.login(smtp_account['email'], smtp_account['password'])
+                        server.send_message(msg)
                 
                 # 下書きを削除
                 conn = sqlite3.connect(DB_FILE)
@@ -4451,6 +4479,7 @@ class MailHubApp:
         
         # 送信ボタン
         def do_send():
+            """【修正版】スレッド化されたメール送信処理"""
             to = to_entry.get().strip()
             subject = subject_entry.get().strip()
             body = body_text.get("1.0", tk.END).strip()
@@ -4467,58 +4496,92 @@ class MailHubApp:
                 messagebox.showerror("エラー", "送信アカウント情報が見つかりません")
                 return
             
-            try:
-                # SMTP送信（添付ファイル対応）
-                import smtplib
-                from email.mime.text import MIMEText
-                from email.mime.multipart import MIMEMultipart
-                from email.mime.base import MIMEBase
-                from email import encoders
-                
-                if attachments:
-                    # 添付ファイルあり
-                    msg = MIMEMultipart()
-                    msg["Subject"] = subject
-                    msg["From"] = from_email
-                    msg["To"] = to
+            # 送信ボタンを無効化
+            send_btn.config(state="disabled", text="送信中...")
+            win.update()
+            
+            def send_thread():
+                """別スレッドでSMTP送信"""
+                error_msg = None
+                try:
+                    # SMTP送信（添付ファイル対応）
+                    import smtplib
+                    from email.mime.text import MIMEText
+                    from email.mime.multipart import MIMEMultipart
+                    from email.mime.base import MIMEBase
+                    from email import encoders
                     
-                    # 本文
-                    msg.attach(MIMEText(body, "plain", "utf-8"))
+                    if attachments:
+                        # 添付ファイルあり
+                        msg = MIMEMultipart()
+                        msg["Subject"] = subject
+                        msg["From"] = from_email
+                        msg["To"] = to
+                        
+                        # 本文
+                        msg.attach(MIMEText(body, "plain", "utf-8"))
+                        
+                        # 添付ファイル
+                        for file_path in attachments:
+                            try:
+                                with open(file_path, "rb") as f:
+                                    part = MIMEBase("application", "octet-stream")
+                                    part.set_payload(f.read())
+                                    encoders.encode_base64(part)
+                                    part.add_header(
+                                        "Content-Disposition",
+                                        f"attachment; filename= {os.path.basename(file_path)}",
+                                    )
+                                    msg.attach(part)
+                            except Exception as e:
+                                error_msg = f"ファイル添付に失敗しました:\n{file_path}\n{e}"
+                                return
+                    else:
+                        # 添付ファイルなし
+                        msg = MIMEText(body, "plain", "utf-8")
+                        msg["Subject"] = subject
+                        msg["From"] = from_email
+                        msg["To"] = to
                     
-                    # 添付ファイル
-                    for file_path in attachments:
-                        try:
-                            with open(file_path, "rb") as f:
-                                part = MIMEBase("application", "octet-stream")
-                                part.set_payload(f.read())
-                                encoders.encode_base64(part)
-                                part.add_header(
-                                    "Content-Disposition",
-                                    f"attachment; filename= {os.path.basename(file_path)}",
-                                )
-                                msg.attach(part)
-                        except Exception as e:
-                            messagebox.showerror("添付エラー", f"ファイル添付に失敗しました:\n{file_path}\n{e}")
-                            return
+                    # 【修正】ポート番号によって接続方式を使い分け
+                    smtp_port = smtp_account.get('smtp_port', 465)
+                    
+                    if smtp_port == 465:
+                        # ポート465: SMTP_SSL（直接SSL接続）
+                        with smtplib.SMTP_SSL(smtp_account['smtp_server'], smtp_port) as server:
+                            server.login(smtp_account['email'], smtp_account['password'])
+                            server.send_message(msg)
+                    else:
+                        # ポート587等: SMTP + STARTTLS
+                        with smtplib.SMTP(smtp_account['smtp_server'], smtp_port) as server:
+                            server.starttls()  # TLS暗号化開始
+                            server.login(smtp_account['email'], smtp_account['password'])
+                            server.send_message(msg)
+                    
+                except Exception as e:
+                    error_msg = f"メール送信に失敗しました:\n{e}"
+                finally:
+                    # メインスレッドでUI更新
+                    win.after(0, lambda: on_send_complete(error_msg))
+            
+            def on_send_complete(error_msg):
+                """送信完了後の処理（メインスレッド）"""
+                send_btn.config(state="normal", text="📤 送信")
+                if error_msg:
+                    messagebox.showerror("送信失敗", error_msg)
                 else:
-                    # 添付ファイルなし
-                    msg = MIMEText(body, "plain", "utf-8")
-                    msg["Subject"] = subject
-                    msg["From"] = from_email
-                    msg["To"] = to
-                
-                with smtplib.SMTP_SSL(smtp_account['smtp_server'], smtp_account.get('smtp_port', 465)) as server:
-                    server.login(smtp_account['email'], smtp_account['password'])
-                    server.send_message(msg)
-                
-                messagebox.showinfo("成功", "メールを送信しました")
-                win.destroy()
-                
-            except Exception as e:
-                messagebox.showerror("送信失敗", f"メール送信に失敗しました:\n{e}")
+                    messagebox.showinfo("成功", "メールを送信しました")
+                    win.destroy()
+            
+            # スレッド起動
+            threading.Thread(target=send_thread, daemon=True).start()
         
         btn_frame = tk.Frame(win)
         btn_frame.grid(row=5, column=1, pady=10)
+        
+        # 送信ボタン（do_send関数より前に定義する必要がある）
+        send_btn = tk.Button(btn_frame, text="📤 送信", command=do_send, bg="#4CAF50", fg="white", width=15)
+        send_btn.pack(side=tk.LEFT, padx=5)
         
         # 下書き保存機能
         def save_draft():
@@ -4572,7 +4635,6 @@ class MailHubApp:
             messagebox.showinfo("保存完了", "下書きを保存しました")
             win.destroy()
         
-        tk.Button(btn_frame, text="📤 送信", command=do_send, bg="#4CAF50", fg="white", width=15).pack(side=tk.LEFT, padx=5)
         tk.Button(btn_frame, text="📝 下書き保存", command=save_draft, bg="#FF9800", fg="white", width=15).pack(side=tk.LEFT, padx=5)
         tk.Button(btn_frame, text="❌ キャンセル", command=win.destroy, bg="#f44336", fg="white", width=15).pack(side=tk.LEFT, padx=5)
     
@@ -4757,9 +4819,20 @@ Subject: {orig_subject}
                     msg["From"] = from_email
                     msg["To"] = to
                 
-                with smtplib.SMTP_SSL(smtp_account['smtp_server'], smtp_account.get('smtp_port', 465)) as server:
-                    server.login(smtp_account['email'], smtp_account['password'])
-                    server.send_message(msg)
+                # 【修正】ポート番号によって接続方式を使い分け
+                smtp_port = smtp_account.get('smtp_port', 465)
+                
+                if smtp_port == 465:
+                    # ポート465: SMTP_SSL（直接SSL接続）
+                    with smtplib.SMTP_SSL(smtp_account['smtp_server'], smtp_port) as server:
+                        server.login(smtp_account['email'], smtp_account['password'])
+                        server.send_message(msg)
+                else:
+                    # ポート587等: SMTP + STARTTLS
+                    with smtplib.SMTP(smtp_account['smtp_server'], smtp_port) as server:
+                        server.starttls()  # TLS暗号化開始
+                        server.login(smtp_account['email'], smtp_account['password'])
+                        server.send_message(msg)
                 
                 # 送信済みとして保存
                 from datetime import datetime
@@ -4899,45 +4972,78 @@ Subject: {orig_subject}
             lbl_info.config(text=f"【警告】設定が見つかりません。デフォルト(Gmail)から送信されます。", fg="red")
             my_conf = {"email": target_account, "fallback_gmail": True}
         
+        btn_frame = tk.Frame(win)
+        btn_frame.pack(pady=10)
+        
+        # 送信ボタン（do_send関数より前に定義）
+        send_btn = tk.Button(btn_frame, text="📤 送信", command=lambda: None, bg="#2196F3", fg="white", width=15)
+        send_btn.pack(side=tk.LEFT, padx=5)
+        
         def do_send():
+            """【修正版】スレッド化された返信送信処理"""
             body = txt_body.get("1.0", tk.END)
             to = ent_to.get()
             sub = ent_sub.get()
-            try:
-                success, msg = self.fetcher.send_email(my_conf, self.config_mgr.config, to, sub, body)
-                
-                if success:
-                    # 送信成功時の処理
+            
+            # 送信ボタンを無効化
+            send_btn.config(state="disabled", text="送信中...")
+            win.update()
+            
+            def send_thread():
+                """別スレッドでメール送信"""
+                error_msg = None
+                success_msg = None
+                try:
+                    success, msg = self.fetcher.send_email(my_conf, self.config_mgr.config, to, sub, body)
                     
-                    # 1. 元メールに返信済みフラグ
-                    original_msg_id = msg_id  # 元のMessage-ID
-                    self.db_mgr.mark_as_replied(original_msg_id)
+                    if success:
+                        # 送信成功時の処理
+                        
+                        # 1. 元メールに返信済みフラグ
+                        original_msg_id = msg_id  # 元のMessage-ID
+                        self.db_mgr.mark_as_replied(original_msg_id)
+                        
+                        # 2. 送信メールをDBに保存
+                        from datetime import datetime
+                        import uuid
+                        
+                        sent_email_data = {
+                            "message_id": str(uuid.uuid4()),  # 一意なID生成
+                            "original_to": to,
+                            "subject": sub,
+                            "sender": target_account,
+                            "date_disp": datetime.now().strftime("%Y/%m/%d %H:%M:%S"),
+                            "timestamp": datetime.now().isoformat(),
+                            "raw_data": body,
+                            "provider": target_account.split("@")[-1] if "@" in target_account else "unknown"
+                        }
+                        
+                        self.db_mgr.save_sent_email(sent_email_data)
+                        
+                        success_msg = msg
+                    else:
+                        error_msg = msg
                     
-                    # 2. 送信メールをDBに保存
-                    from datetime import datetime
-                    import uuid
-                    
-                    sent_email_data = {
-                        "message_id": str(uuid.uuid4()),  # 一意なID生成
-                        "original_to": to,
-                        "subject": sub,
-                        "sender": target_account,
-                        "date_disp": datetime.now().strftime("%Y/%m/%d %H:%M:%S"),
-                        "timestamp": datetime.now().isoformat(),
-                        "raw_data": body,
-                        "provider": target_account.split("@")[-1] if "@" in target_account else "unknown"
-                    }
-                    
-                    self.db_mgr.save_sent_email(sent_email_data)
-                    
-                    # 3. 画面更新
+                except Exception as e:
+                    error_msg = f"送信失敗: {e}"
+                finally:
+                    # メインスレッドでUI更新
+                    win.after(0, lambda: on_send_complete(error_msg, success_msg))
+            
+            def on_send_complete(error_msg, success_msg):
+                """送信完了後の処理（メインスレッド）"""
+                send_btn.config(state="normal", text="📤 送信")
+                if error_msg:
+                    messagebox.showerror("エラー", error_msg)
+                else:
+                    # 画面更新
                     self.refresh_tree_from_db()
                     self.refresh_folder_tree()
-                
-                messagebox.showinfo("完了", msg)
-                win.destroy()
-            except Exception as e:
-                messagebox.showerror("エラー", f"送信失敗: {e}")
+                    messagebox.showinfo("完了", success_msg or "メールを送信しました")
+                    win.destroy()
+            
+            # スレッド起動
+            threading.Thread(target=send_thread, daemon=True).start()
         
         def save_draft_reply():
             """返信下書き保存"""
@@ -4989,10 +5095,9 @@ Subject: {orig_subject}
             messagebox.showinfo("保存完了", "下書きを保存しました")
             win.destroy()
         
-        btn_frame = tk.Frame(win)
-        btn_frame.pack(pady=10)
+        # send_btnのcommandを設定
+        send_btn.config(command=do_send)
         
-        tk.Button(btn_frame, text="📤 送信", command=do_send, bg="#2196F3", fg="white", width=15).pack(side=tk.LEFT, padx=5)
         tk.Button(btn_frame, text="📝 下書き保存", command=save_draft_reply, bg="#FF9800", fg="white", width=15).pack(side=tk.LEFT, padx=5)
     
     def move_to_promo(self):
